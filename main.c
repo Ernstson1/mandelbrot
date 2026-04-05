@@ -22,7 +22,7 @@ Terminal* create_terminal(int rows, int cols)
     Terminal* term = malloc(sizeof(Terminal));
     term->rows = rows;
     term->columns = cols;
-    term->buffer = malloc(cols * rows * 30);
+    term->buffer = malloc(cols * rows * 40);
     term->len = 0;
     return term;
 }
@@ -45,6 +45,7 @@ void draw(double offset_real, double offset_imag, double zoom)
 
     for (int y = 0; y < t->rows; y++)
     {
+        t->len += sprintf(t->buffer + t->len, "\033[%d;1H", y + 1); // once per row
         for (int x = 0; x < t->columns; x++)
         {
             double c_real = offset_real + (x / (double)t->columns) * 3.4 * zoom;
@@ -68,18 +69,14 @@ void draw(double offset_real, double offset_imag, double zoom)
             }
             if (in_set)
             {
-                t->len += sprintf(t->buffer + t->len, "\033[%d;%dH  ", y + 1, x * 2 + 1);
+                t->len += sprintf(t->buffer + t->len, "  ");
             }
             else
             {
-                t->len += sprintf(t->buffer + t->len, "\033[%d;%dH", y + 1, x * 2 + 1);
-                if (i < 7)
-                    t->len += sprintf(t->buffer + t->len, "  "); // empty/black for fast escapers
-                else
-                {
-                    int color = (i % 6) + 31;
-                    t->len += sprintf(t->buffer + t->len, "\033[%dm██\033[0m", color);
-                }
+                int r = (i * 9) % 256;
+                int g = (i * 5) % 256;
+                int b = (i * 17) % 256;
+                t->len += sprintf(t->buffer + t->len, "\033[48;2;%d;%d;%dm  \033[0m", r, g, b);
             }
         }
     }
@@ -126,7 +123,7 @@ int main()
     char c;
     while ((c = getchar()) != 'q')
     {
-        double step = 0.1;
+        double step = 0.1 * zoom;
         if (c == 'a')
             offset_real -= step;
         if (c == 'd')
