@@ -14,17 +14,20 @@ typedef struct
     int len;
 } Terminal;
 
+struct termios original;
+Terminal* t;
+
 Terminal* create_terminal(int rows, int cols)
 {
-    Terminal* t = malloc(sizeof(Terminal));
-    t->rows = rows;
-    t->columns = cols;
-    t->buffer = malloc(cols * rows * 30);
-    t->len = 0;
-    return t;
+    Terminal* term = malloc(sizeof(Terminal));
+    term->rows = rows;
+    term->columns = cols;
+    term->buffer = malloc(cols * rows * 30);
+    term->len = 0;
+    return term;
 }
 
-void draw(double offset_real, double offset_imag, double zoom, Terminal* t)
+void draw(double offset_real, double offset_imag, double zoom)
 {
 
     // Formula: z_n+1 = z_n^2 + c
@@ -83,8 +86,6 @@ void draw(double offset_real, double offset_imag, double zoom, Terminal* t)
     write(STDOUT_FILENO, t->buffer, t->len);
 }
 
-struct termios original;
-
 void enable_raw_mode()
 {
     struct termios raw;
@@ -103,6 +104,8 @@ void handle_sigint(int sig)
 {
     (void)sig;
     disable_raw_mode();
+    free(t->buffer);
+    free(t);
     exit(0);
 }
 
@@ -111,14 +114,14 @@ int main()
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
-    Terminal* t = create_terminal(w.ws_row, w.ws_col / 2);
+    t = create_terminal(w.ws_row, w.ws_col / 2);
 
     signal(SIGINT, handle_sigint);
     enable_raw_mode();
     double offset_real = -2.75;
     double offset_imag = -0.5;
     double zoom = 0.5;
-    draw(offset_real, offset_imag, zoom, t); // commented for testing
+    draw(offset_real, offset_imag, zoom); // commented for testing
 
     char c;
     while ((c = getchar()) != 'q')
@@ -139,9 +142,11 @@ int main()
 
         if (zoom < 0.001)
             zoom = 0.001;
-        draw(offset_real, offset_imag, zoom, t);
+        draw(offset_real, offset_imag, zoom);
     }
 
     disable_raw_mode();
+    free(t->buffer);
+    free(t);
     return 0;
 }
