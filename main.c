@@ -1,10 +1,30 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 #include <unistd.h>
 
 #define max_iter 100
 
-void draw(double offset_real, double offset_imag)
+typedef struct
+{
+    int rows;
+    int columns;
+    char* buffer;
+    int len;
+} Terminal;
+
+Terminal* create_terminal(int rows, int cols)
+{
+    Terminal* t = malloc(sizeof(Terminal));
+    t->rows = rows;
+    t->columns = cols;
+    t->buffer = malloc(cols * rows * 30);
+    t->len = 0;
+    return t;
+}
+
+void draw(double offset_real, double offset_imag, double zoom, Terminal* t)
 {
 
     // Formula: z_n+1 = z_n^2 + c
@@ -18,21 +38,14 @@ void draw(double offset_real, double offset_imag)
     real part is (a² - b²) and imaginary part is 2ab
     */
 
-    // Find terminal size
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    int rows = w.ws_row;
-    int columns = w.ws_col / 2;
+    t->len = 0;
 
-    // Clear screen
-    printf("\033[2J");
-
-    for (int y = 0; y < rows; y++)
+    for (int y = 0; y < t->rows; y++)
     {
-        for (int x = 0; x < columns; x++)
+        for (int x = 0; x < t->columns; x++)
         {
-            double c_real = offset_real + (x / (double)columns) * 3.4;
-            double c_imag = offset_imag + (y / (double)rows) * 1.5;
+            double c_real = offset_real + (x / (double)t->columns) * 3.4 * zoom;
+            double c_imag = offset_imag + (y / (double)t->rows) * 1.5 * zoom;
 
             double z_real = 0, z_imag = 0;
 
@@ -52,29 +65,83 @@ void draw(double offset_real, double offset_imag)
             }
             if (in_set)
             {
-                printf("\033[%d;%dH ", y + 1, x * 2 + 1); // black/empty interior
+                t->len += sprintf(t->buffer + t->len, "\033[%d;%dH  ", y + 1, x * 2 + 1);
             }
             else
             {
-                printf("\033[%d;%dH", y + 1, x * 2 + 1);
-                if (i < 3)
-                    printf("  "); // empty/black for fast escapers
+                t->len += sprintf(t->buffer + t->len, "\033[%d;%dH", y + 1, x * 2 + 1);
+                if (i < 7)
+                    t->len += sprintf(t->buffer + t->len, "  "); // empty/black for fast escapers
                 else
                 {
                     int color = (i % 6) + 31;
-                    printf("\033[%dm██\033[0m", color);
+                    t->len += sprintf(t->buffer + t->len, "\033[%dm██\033[0m", color);
                 }
             }
         }
     }
+    write(STDOUT_FILENO, t->buffer, t->len);
+}
 
-    printf("\033[%d;1H", w.ws_row);
+struct termios original;
+
+void enable_raw_mode()
+{
+    struct termios raw;
+    tcgetattr(0, &original);
+    raw = original;
+    raw.c_lflag &= ~(ICANON | ECHO); // disable line buffering and echo
+    tcsetattr(0, TCSANOW, &raw);
+}
+
+void disable_raw_mode()
+{
+    tcsetattr(0, TCSANOW, &original);
+}
+
+void handle_sigint(int sig)
+{
+    (void)sig;
+    disable_raw_mode();
+    exit(0);
 }
 
 int main()
 {
-    double offset_real = -2.5;
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    Terminal* t = create_terminal(w.ws_row, w.ws_col / 2);
+
+    signal(SIGINT, handle_sigint);
+    enable_raw_mode();
+    double offset_real = -2.75;
     double offset_imag = -0.5;
-    draw(offset_real, offset_imag);
+    double zoom = 0.5;
+    draw(offset_real, offset_imag, zoom, t); // commented for testing
+
+    char c;
+    while ((c = getchar()) != 'q')
+    {
+        double step = 0.1;
+        if (c == 'a')
+            offset_real -= step;
+        if (c == 'd')
+            offset_real += step;
+        if (c == 'w')
+            offset_imag -= step;
+        if (c == 's')
+            offset_imag += step;
+        if (c == 'z')
+            zoom -= 0.1;
+        if (c == 'x')
+            zoom += 0.1;
+
+        if (zoom < 0.001)
+            zoom = 0.001;
+        draw(offset_real, offset_imag, zoom, t);
+    }
+
+    disable_raw_mode();
     return 0;
 }
