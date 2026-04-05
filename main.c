@@ -27,7 +27,7 @@ Terminal* create_terminal(int rows, int cols)
     return term;
 }
 
-void draw(double offset_real, double offset_imag, double zoom)
+void draw(double offset_real, double offset_imag, double zoom, double range_imag, double range_real)
 {
 
     // Formula: z_n+1 = z_n^2 + c
@@ -48,8 +48,10 @@ void draw(double offset_real, double offset_imag, double zoom)
         t->len += sprintf(t->buffer + t->len, "\033[%d;1H", y + 1); // once per row
         for (int x = 0; x < t->columns; x++)
         {
-            double c_real = offset_real + (x / (double)t->columns) * 3.4 * zoom;
-            double c_imag = offset_imag + (y / (double)t->rows) * 1.5 * zoom;
+            double c_real = offset_real - (range_real * zoom) / 2.0 +
+                            (x / (double)t->columns) * range_real * zoom;
+            double c_imag =
+                offset_imag - (range_imag * zoom) / 2.0 + (y / (double)t->rows) * range_imag * zoom;
 
             double z_real = 0, z_imag = 0;
 
@@ -115,10 +117,15 @@ int main()
 
     signal(SIGINT, handle_sigint);
     enable_raw_mode();
-    double offset_real = -2.75;
-    double offset_imag = -0.5;
-    double zoom = 0.5;
-    draw(offset_real, offset_imag, zoom); // commented for testing
+
+    double offset_real = 0;
+    double offset_imag = 0;
+
+    double range_real = 4.5;
+    double range_imag = 2.5;
+    double zoom = 1.0;
+
+    draw(offset_real, offset_imag, zoom, range_imag, range_real);
 
     char c;
     while ((c = getchar()) != 'q')
@@ -139,7 +146,7 @@ int main()
 
         if (zoom < 0.001)
             zoom = 0.001;
-        draw(offset_real, offset_imag, zoom);
+        draw(offset_real, offset_imag, zoom, range_imag, range_real);
     }
 
     disable_raw_mode();
