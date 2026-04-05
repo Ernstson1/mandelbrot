@@ -65,6 +65,8 @@ CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+main
+.clang-format
 
 # ===== C# / .NET =====
 *.dll
