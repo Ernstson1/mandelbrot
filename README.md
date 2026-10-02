@@ -1,9 +1,10 @@
 # mandelbrot
 
-A Mandelbrot set renderer in the terminal using ANSI escape codes and Unicode block characters. Adapts to your terminal size and supports real-time pan and zoom.
+A Mandelbrot set renderer that runs in the terminal using ANSI escape codes and 24-bit color. Each character cell is drawn as a colored background block, so the terminal works like a pixel canvas. It adapts to your terminal size and supports real-time pan and zoom.
 
 ## Requirements
 
+- macOS or Linux (uses `termios` and `ioctl`, so it won't build natively on Windows)
 - A terminal with true color (24-bit) support (iTerm2, Kitty, most modern Linux terminals)
 - GCC or Clang
 
@@ -19,7 +20,7 @@ gcc main.c -o main
 ./main
 ```
 
-Zoom in before panning for best results — the default view shows the full set.
+The default view shows the full set. Zoom in before panning for best results.
 
 ## Controls
 
@@ -30,12 +31,13 @@ Zoom in before panning for best results — the default view shows the full set.
 | `x` | Zoom out |
 | `q` | Quit |
 
-## Notes
-- Best experienced in a large terminal window — the example screenshot was taken at 456 × 2533
-- True color (24-bit) terminal required (iTerm2, Kitty, most modern Linux terminals)
-- Fine details near the boundary may shift when panning/zooming due to iteration limits
+## Tips
+
+- **Shrink your terminal font for higher resolution.** Every character cell is one "pixel", so zooming the font out (e.g. `Cmd -` in iTerm2) gives a much sharper image. Resize *before* starting the program, since it reads the terminal size at launch.
+- Fine details near the boundary may shift when panning or zooming due to the iteration limit (100).
 
 ## Example output
-This is an example of the output for a terminal of size: 456 x 2533
 
-![an example of the output](mandelbrot_example.png)
+Rendered at 456 rows × 2533 columns with the terminal font zoomed far out.
+
+![Example output of the Mandelbrot renderer](mandelbrot_example.png)
